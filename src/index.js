@@ -6,3 +6,6 @@ export { createRealNode } from "./create-real-node.js";
 export { cloneVNode, domToVNode } from "./dom-to-vnode.js";
 export { getNodeByPath } from "./path.js";
 export { VNODE_TYPES, VNODE_INTERNAL_TYPES, PATCH_TYPES } from "./constants.js";
+export { addDebugListener, emitDebugEvent } from "./debug.js";
+export { FunctionComponent, getCurrentComponent } from "./function-component.js";
+export { useState, useEffect, useMemo } from "./hooks.js";

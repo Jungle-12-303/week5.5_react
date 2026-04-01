@@ -277,3 +277,31 @@ test("render handles replace and remove patches in the same commit pass", (t) =>
     "first changed"
   );
 });
+
+test("render ignores child components that return null", (t) => {
+  const { container } = setupDom();
+  t.after(() => {
+    delete global.document;
+  });
+
+  function HiddenBadge() {
+    return null;
+  }
+
+  const result = render(
+    h(
+      "section",
+      null,
+      h("h1", null, "출발 전광판"),
+      h(HiddenBadge, null),
+      h("p", null, "정상 렌더")
+    ),
+    container
+  );
+
+  assert.equal(container.childNodes.length, 1);
+  assert.equal(result.rootDomNode.tag, "section");
+  assert.equal(result.rootDomNode.childNodes.length, 2);
+  assert.equal(result.rootDomNode.childNodes[0].tag, "h1");
+  assert.equal(result.rootDomNode.childNodes[1].tag, "p");
+});
