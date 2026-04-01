@@ -183,3 +183,8 @@ mini-react/
 - React와 완전히 동일한 내부 구조를 재현하지는 않습니다.
 - JSX, hooks, production-level reconciliation은 현재 범위에 포함하지 않습니다.
 
+
+
+
+
+감사합니다
