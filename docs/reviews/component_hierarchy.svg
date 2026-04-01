@@ -1,61 +1,61 @@
-<svg width="900" height="430" viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg">
+<svg width="1400" height="680" viewBox="0 0 1400 680" xmlns="http://www.w3.org/2000/svg">
 
-  <rect width="900" height="430" fill="#f0ede6"/>
+  <rect width="1400" height="680" fill="#f0ede6"/>
 
   <!-- DepartureBoardApp (root) -->
-  <rect x="8" y="8" width="884" height="414" rx="10"
-        fill="none" stroke="#7F77DD" stroke-width="3"/>
-  <rect x="8" y="8" width="196" height="22" rx="4" fill="#7F77DD"/>
-  <text x="16" y="23" font-size="11" fill="white" font-weight="500" font-family="sans-serif">DepartureBoardApp</text>
-  <text x="212" y="23" font-size="10" fill="#AFA9EC" font-family="sans-serif">훅[0~6] 전부 보유 · 유일한 상태 소유자</text>
+  <rect x="10" y="10" width="1380" height="660" rx="12"
+        fill="none" stroke="#7F77DD" stroke-width="4"/>
+  <rect x="10" y="10" width="380" height="40" rx="6" fill="#7F77DD"/>
+  <text x="22" y="38" font-size="22" fill="white" font-weight="700" font-family="sans-serif">DepartureBoardApp</text>
+  <text x="400" y="38" font-size="19" fill="#AFA9EC" font-family="sans-serif">훅[0~6] 전부 보유 · 유일한 상태 소유자</text>
 
   <!-- ControlPanel (left) -->
-  <rect x="20" y="38" width="300" height="266" rx="8"
-        fill="none" stroke="#1D9E75" stroke-width="2"/>
-  <rect x="20" y="38" width="96" height="20" rx="4" fill="#1D9E75"/>
-  <text x="28" y="52" font-size="10" fill="white" font-weight="500" font-family="sans-serif">ControlPanel</text>
-  <text x="122" y="52" font-size="10" fill="#5DCAA5" font-family="sans-serif">props 수신 · 훅 없음</text>
+  <rect x="24" y="64" width="420" height="420" rx="10"
+        fill="none" stroke="#1D9E75" stroke-width="3"/>
+  <rect x="24" y="64" width="180" height="38" rx="6" fill="#1D9E75"/>
+  <text x="36" y="89" font-size="20" fill="white" font-weight="700" font-family="sans-serif">ControlPanel</text>
+  <text x="212" y="89" font-size="18" fill="#5DCAA5" font-family="sans-serif">props 수신 · 훅 없음</text>
 
   <!-- BoardScreen (right) -->
-  <rect x="334" y="38" width="550" height="374" rx="10"
-        fill="none" stroke="#378ADD" stroke-width="2"/>
-  <rect x="334" y="38" width="90" height="20" rx="4" fill="#378ADD"/>
-  <text x="342" y="52" font-size="10" fill="white" font-weight="500" font-family="sans-serif">BoardScreen</text>
-  <text x="430" y="52" font-size="10" fill="#85B7EB" font-family="sans-serif">props 수신 · 훅 없음</text>
+  <rect x="462" y="64" width="908" height="596" rx="12"
+        fill="none" stroke="#378ADD" stroke-width="3"/>
+  <rect x="462" y="64" width="172" height="38" rx="6" fill="#378ADD"/>
+  <text x="474" y="89" font-size="20" fill="white" font-weight="700" font-family="sans-serif">BoardScreen</text>
+  <text x="642" y="89" font-size="18" fill="#85B7EB" font-family="sans-serif">props 수신 · 훅 없음</text>
 
   <!-- BoardToolbar -->
-  <rect x="346" y="64" width="526" height="44" rx="6"
-        fill="none" stroke="#BA7517" stroke-width="1.5"/>
-  <rect x="346" y="64" width="90" height="18" rx="4" fill="#BA7517"/>
-  <text x="354" y="77" font-size="10" fill="white" font-weight="500" font-family="sans-serif">BoardToolbar</text>
-  <text x="442" y="77" font-size="10" fill="#FAC775" font-family="sans-serif">props 수신 · 훅 없음</text>
+  <rect x="478" y="114" width="876" height="72" rx="8"
+        fill="none" stroke="#BA7517" stroke-width="2.5"/>
+  <rect x="478" y="114" width="172" height="36" rx="6" fill="#BA7517"/>
+  <text x="490" y="138" font-size="20" fill="white" font-weight="700" font-family="sans-serif">BoardToolbar</text>
+  <text x="658" y="138" font-size="18" fill="#FAC775" font-family="sans-serif">props 수신 · 훅 없음</text>
 
   <!-- DepartureList -->
-  <rect x="346" y="116" width="526" height="284" rx="6"
-        fill="none" stroke="#D85A30" stroke-width="1.5"/>
-  <rect x="346" y="116" width="100" height="18" rx="4" fill="#D85A30"/>
-  <text x="354" y="129" font-size="10" fill="white" font-weight="500" font-family="sans-serif">DepartureList</text>
-  <text x="452" y="129" font-size="10" fill="#F0997B" font-family="sans-serif">props 수신 · 훅 없음</text>
+  <rect x="478" y="200" width="876" height="444" rx="8"
+        fill="none" stroke="#D85A30" stroke-width="2.5"/>
+  <rect x="478" y="200" width="180" height="36" rx="6" fill="#D85A30"/>
+  <text x="490" y="224" font-size="20" fill="white" font-weight="700" font-family="sans-serif">DepartureList</text>
+  <text x="666" y="224" font-size="18" fill="#F0997B" font-family="sans-serif">props 수신 · 훅 없음</text>
 
   <!-- DepartureRow × 4 -->
-  <rect x="358" y="142" width="502" height="44" rx="4"
-        fill="none" stroke="#993C1D" stroke-width="1" stroke-dasharray="4 3"/>
-  <text x="364" y="154" font-size="9" fill="#993C1D" font-weight="500" font-family="sans-serif">DepartureRow</text>
-  <text x="444" y="154" font-size="9" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
+  <rect x="494" y="248" width="844" height="72" rx="6"
+        fill="none" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="506" y="272" font-size="19" fill="#993C1D" font-weight="700" font-family="sans-serif">DepartureRow</text>
+  <text x="670" y="272" font-size="18" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
 
-  <rect x="358" y="192" width="502" height="44" rx="4"
-        fill="none" stroke="#993C1D" stroke-width="1" stroke-dasharray="4 3"/>
-  <text x="364" y="204" font-size="9" fill="#993C1D" font-weight="500" font-family="sans-serif">DepartureRow</text>
-  <text x="444" y="204" font-size="9" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
+  <rect x="494" y="332" width="844" height="72" rx="6"
+        fill="none" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="506" y="356" font-size="19" fill="#993C1D" font-weight="700" font-family="sans-serif">DepartureRow</text>
+  <text x="670" y="356" font-size="18" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
 
-  <rect x="358" y="242" width="502" height="44" rx="4"
-        fill="none" stroke="#993C1D" stroke-width="1" stroke-dasharray="4 3"/>
-  <text x="364" y="254" font-size="9" fill="#993C1D" font-weight="500" font-family="sans-serif">DepartureRow</text>
-  <text x="444" y="254" font-size="9" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
+  <rect x="494" y="416" width="844" height="72" rx="6"
+        fill="none" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="506" y="440" font-size="19" fill="#993C1D" font-weight="700" font-family="sans-serif">DepartureRow</text>
+  <text x="670" y="440" font-size="18" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
 
-  <rect x="358" y="292" width="502" height="44" rx="4"
-        fill="none" stroke="#993C1D" stroke-width="1" stroke-dasharray="4 3"/>
-  <text x="364" y="304" font-size="9" fill="#993C1D" font-weight="500" font-family="sans-serif">DepartureRow</text>
-  <text x="444" y="304" font-size="9" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
+  <rect x="494" y="500" width="844" height="72" rx="6"
+        fill="none" stroke="#993C1D" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="506" y="524" font-size="19" fill="#993C1D" font-weight="700" font-family="sans-serif">DepartureRow</text>
+  <text x="670" y="524" font-size="18" fill="#F5C4B3" font-family="sans-serif">useMemo로 상태 계산 · 반복 렌더</text>
 
 </svg>
