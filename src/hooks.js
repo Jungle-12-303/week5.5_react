@@ -1,12 +1,6 @@
 import { getCurrentComponent } from "./function-component.js";
 import { emitDebugEvent } from "./debug.js";
-
-// 기능: 디버그 로그에 표시할 컴포넌트 이름을 안전하게 만든다
-// 입력: component (FunctionComponent) — 이름을 꺼낼 컴포넌트 인스턴스
-// 출력: 사람이 읽기 쉬운 컴포넌트 이름 (string)
-function getComponentName(component) {
-  return component.fn?.name || "AnonymousComponent";
-}
+import { getComponentName } from "./component-name.js";
 
 // 기능: 디버그 로그에 남길 값을 간단한 문자열로 정리한다
 // 입력: value (any) — 로그에 표시할 상태값 또는 계산 결과
@@ -108,6 +102,10 @@ export function useState(initialValue) {
     slot = {
       value: initialValue,
       setState(nextValue) {
+        if (component.isUnmounted) {
+          return;
+        }
+
         const previousValue = slot.value;
         const resolvedValue =
           typeof nextValue === "function" ? nextValue(slot.value) : nextValue;
@@ -121,8 +119,7 @@ export function useState(initialValue) {
           message: `[setState 호출] ${componentName} hook[${index}] ${formatDebugValue(previousValue)} -> ${formatDebugValue(resolvedValue)}`,
         });
 
-        slot.value =
-          typeof nextValue === "function" ? nextValue(slot.value) : nextValue;
+        slot.value = resolvedValue;
         component.update();
       },
     };
@@ -172,6 +169,10 @@ export function useEffect(callback, deps) {
     });
 
     scheduleAfterRender(() => {
+      if (component.isUnmounted) {
+        return;
+      }
+
       if (typeof previousCleanup === "function") {
         emitDebugEvent({
           type: "useEffect:cleanup",

@@ -1,14 +1,8 @@
 import { render } from "./render.js";
 import { emitDebugEvent } from "./debug.js";
+import { getComponentName } from "./component-name.js";
 
 let currentComponent = null; // 지금 렌더링 중인 루트 컴포넌트 인스턴스
-
-// 기능: 디버그 로그에 표시할 컴포넌트 이름을 안전하게 만든다
-// 입력: component (FunctionComponent) — 이름을 꺼낼 컴포넌트 인스턴스
-// 출력: 사람이 읽기 쉬운 컴포넌트 이름 (string)
-function getComponentName(component) {
-  return component.fn?.name || "AnonymousComponent";
-}
 
 export class FunctionComponent {
   // 기능: 함수형 컴포넌트 인스턴스를 초기화한다
@@ -22,6 +16,7 @@ export class FunctionComponent {
     this.container = container; // diff와 commit이 작업할 루트 컨테이너
     this.hooks = []; // 훅별 상태값과 메모 정보를 저장하는 사물함
     this.hookIndex = 0; // 현재 읽고 있는 훅 슬롯 번호
+    this.isUnmounted = false; // unmount 이후 예약 작업과 상태 업데이트를 막기 위한 표시
   }
 
   // 기능: 컴포넌트를 처음 렌더링하고 결과를 DOM에 반영한다
@@ -29,6 +24,8 @@ export class FunctionComponent {
   // 출력: render()의 결과 객체 (Object)
   mount() {
     const componentName = getComponentName(this);
+
+    this.isUnmounted = false;
 
     emitDebugEvent({
       type: "render:start",
@@ -91,6 +88,38 @@ export class FunctionComponent {
     } finally {
       currentComponent = null;
     }
+  }
+
+  // 기능: effect cleanup을 실행하고 루트 DOM을 제거한다
+  // 입력: 없음
+  // 출력: render(null)의 결과 객체 (Object)
+  unmount() {
+    const componentName = getComponentName(this);
+
+    this.isUnmounted = true;
+
+    this.hooks.forEach((slot, index) => {
+      if (typeof slot?.cleanup !== "function") {
+        return;
+      }
+
+      emitDebugEvent({
+        type: "useEffect:cleanup",
+        componentName,
+        hookIndex: index,
+        message: `[useEffect cleanup] ${componentName} hook[${index}] unmount`,
+      });
+
+      slot.cleanup();
+      slot.cleanup = null;
+    });
+
+    const result = render(null, this.container);
+
+    this.hooks = [];
+    this.hookIndex = 0;
+
+    return result;
   }
 }
 

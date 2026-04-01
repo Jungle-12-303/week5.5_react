@@ -179,6 +179,30 @@ test("setter updates the stored value and triggers a re-render", (t) => {
   assert.equal(getRenderedText(container), "1");
 });
 
+test("functional updater runs exactly once per setState call", (t) => {
+  let stateSnapshot = null;
+  let updaterCallCount = 0;
+
+  // 기능: 함수형 updater가 몇 번 호출되는지 검증한다
+  // 입력: 없음
+  // 출력: 현재 상태를 그린 루트 VNode (Object)
+  function App() {
+    stateSnapshot = useState(0);
+    return h("div", null, String(stateSnapshot[0]));
+  }
+
+  const { container, instance } = mountComponent(t, App);
+
+  stateSnapshot[1]((currentValue) => {
+    updaterCallCount += 1;
+    return currentValue + 1;
+  });
+
+  assert.equal(updaterCallCount, 1);
+  assert.equal(instance.hooks[0].value, 1);
+  assert.equal(getRenderedText(container), "1");
+});
+
 test("setter reference is stable across renders", (t) => {
   let firstSetter = null;
   let secondSetter = null;
@@ -311,6 +335,34 @@ test("useEffect calls cleanup before re-running", async (t) => {
   await flushEffects();
 
   assert.deepEqual(events, ["run:1", "cleanup:1", "run:2"]);
+});
+
+test("useEffect cleanup runs when the component unmounts", async (t) => {
+  const events = [];
+
+  // 기능: unmount 시 effect cleanup이 호출되는지 기록한다
+  // 입력: 없음
+  // 출력: 고정된 루트 VNode (Object)
+  function App() {
+    useEffect(() => {
+      events.push("run");
+
+      return () => {
+        events.push("cleanup");
+      };
+    }, []);
+
+    return h("div", null, "mounted");
+  }
+
+  const { instance, container } = mountComponent(t, App);
+
+  await flushEffects();
+  const unmountResult = instance.unmount();
+
+  assert.deepEqual(events, ["run", "cleanup"]);
+  assert.equal(container.childNodes.length, 0);
+  assert.equal(unmountResult.rootDomNode, null);
 });
 
 test("useEffect without deps runs on every render", async (t) => {

@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pathToFileURL } from "node:url";
 
 // 기능: 테스트용 가짜 Element 노드를 만든다
 // 입력: tag (string) — 생성할 노드의 태그 이름
@@ -228,9 +227,7 @@ test("hooks demo mounts and updates state through real button handlers", async (
     delete global.document;
   });
 
-  const moduleUrl = `${pathToFileURL(
-    "/Users/hmm/Desktop/jungle/project/react_mini/simple_ver/mini_react/examples/hooks-demo/main.js"
-  ).href}?demo-test=1`;
+  const moduleUrl = new URL("../examples/hooks-demo/main.js?demo-test=1", import.meta.url).href;
 
   await import(moduleUrl);
   await flushEffects();
