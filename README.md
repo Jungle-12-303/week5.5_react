@@ -2,6 +2,7 @@
 
 React의 핵심 개념인 `Virtual DOM`, `diff`, `commit` 흐름을 직접 구현하고 이해하기 위한 학습용 mini-react 프로젝트입니다.
 
+
 이 프로젝트는 React 전체를 복제하는 것이 아니라, 아래 질문에 답할 수 있도록 만드는 데 집중합니다.
 
 - UI를 왜 JavaScript 객체 트리로 표현하는가?
