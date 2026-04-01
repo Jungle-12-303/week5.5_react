@@ -4,25 +4,6 @@ React의 핵심 동작 원리를 바닥부터 직접 구현한 학습용 프로�
 Virtual DOM, Diff/Patch, Hooks(useState · useEffect · useMemo), FunctionComponent를 Vanilla JS로 구현하고,  
 이를 활용해 **공항·기차역 출발 안내판** 웹 앱을 완성했습니다.
 
-```
-npx serve .                                # 로컬 서버 실행 후
-# examples/departure-board/index.html 접속 (ES Module이므로 서버 필요)
-```
-
----
-
-## 발표 시연 포인트
-
-| 순서 | 행동 | 확인할 것 |
-|---|---|---|
-| 1 | 편성 추가 (항공편/열차) | 전광판에 행이 즉시 추가되고 Hook Debug Panel의 `setState`, `Render` 카운터 증가 |
-| 2 | 상태 필터 토글 (정시 → 탑승 안내) | 전광판이 필터링되면서 `useMemo`는 재계산, `useEffect`는 **실행 안 됨** |
-| 3 | 지연 +5분 버튼 클릭 | 해당 행만 DELAYED 뱃지로 전환, DOM Patch는 해당 셀만 |
-| 4 | 1초 대기 | 타이머가 `currentTime`을 갱신 → `useMemo` 재계산 → 출발 10분 전 행이 BOARDING으로 자동 전환 |
-| 5 | 팝오버 좌표 변경 (필터 버튼 클릭 후 닫기) | `setState` 호출되지만 `useMemo`는 **캐시 유지** (board 관련 deps 불변) |
-
-> Hook Debug Panel(화면 하단)은 `render:start`, `setState`, `useEffect:run`, `useMemo:compute` 이벤트를 실시간으로 집계합니다.
-
 ---
 
 ## 목차
@@ -39,25 +20,8 @@ npx serve .                                # 로컬 서버 실행 후
    - [항공편 상태 전환](#항공편-상태-전환)
    - [Hook Debug Panel](#hook-debug-panel)
 5. [테스트](#테스트)
-6. [디렉토리 구조](#디렉토리-구조)
-
----
-
-## 요구사항 구현 요약
-
-| 요구사항 | 구현 위치 | 내용 |
-|---|---|---|
-| 함수형 컴포넌트 (FunctionComponent 클래스) | `src/function-component.js` | hooks 배열, mount(), update() 포함 |
-| **제약: Hook은 최상위 컴포넌트에서만** | `src/hooks.js` `getHookContext()` | `currentComponent === null`이면 즉시 throw — 자식 함수에서 호출 시 런타임 오류 발생 |
-| **제약: 자식은 Stateless 순수 함수** | `examples/departure-board/main.js` | 루트 외 모든 컴포넌트가 `props`만 받는 일반 함수로 구현 (FunctionComponent 인스턴스 없음) |
-| useState | `src/hooks.js` | 슬롯 기반 상태 저장, setState → update() 트리거 |
-| useEffect | `src/hooks.js` | deps 비교, queueMicrotask 스케줄, cleanup |
-| useMemo | `src/hooks.js` | deps 변경 시만 재계산, 캐시 반환 |
-| Virtual DOM + Diff + Patch | `src/diff.js`, `src/commit.js` | 변경된 부분만 실제 DOM에 반영 |
-| 상태 끌어올리기 (Lifting State Up) | `examples/departure-board/main.js` | 루트만 상태 보유, 자식은 순수 함수 |
-| 사용자 입력/클릭으로 화면 변경 | `examples/departure-board/main.js` | 편성 추가·삭제·지연, 필터, 1초 타이머 |
-| Vanilla JS / 외부 프레임워크 금지 | 전체 | 외부 의존성 없음 |
-| 단위 테스트 + 엣지 케이스 | `test/` | 6개 파일, 40+ 케이스 |
+6. [버그 수정 사례 — Null Child 처리](#버그-수정-사례--null-child-처리)
+7. [디렉토리 구조](#디렉토리-구조)
 
 ---
 
@@ -196,49 +160,6 @@ flowchart TD
     F --> G
     E --> G
 ```
-
----
-
-### Virtual DOM → Diff → Patch
-
-이전 VNode와 새 VNode를 비교해 **최소한의 변경 목록(Patch[])** 을 계산하고,  
-`path` 문자열로 대상 노드를 정확히 찾아 실제 DOM에만 반영합니다.
-
-```mermaid
-sequenceDiagram
-    participant R as render.js
-    participant D as diff.js
-    participant C as commit.js
-    participant DOM as 실제 DOM
-
-    R->>D: diff(oldVNode, newVNode)
-    D-->>R: Patch[]
-    R->>C: commitPatches(rootNode, patches)
-    loop 각 Patch
-        C->>C: getNodeByPath(path)
-        alt CREATE
-            C->>DOM: appendChild(createRealNode)
-        else REMOVE
-            C->>DOM: removeChild(target)
-        else REPLACE
-            C->>DOM: replaceChild(new, old)
-        else UPDATE_PROP
-            C->>DOM: updateProps(node, oldProps, newProps)
-        else UPDATE_TEXT
-            C->>DOM: target.nodeValue = newValue
-        end
-    end
-```
-
-**Patch 종류:**
-
-| Patch 타입 | 설명 |
-|---|---|
-| `CREATE` | 새 노드 추가 |
-| `REMOVE` | 기존 노드 제거 |
-| `REPLACE` | 노드 전체 교체 (타입 변경 시) |
-| `UPDATE_PROP` | 속성/이벤트 변경 |
-| `UPDATE_TEXT` | 텍스트 내용 변경 |
 
 ---
 
@@ -382,12 +303,6 @@ stateDiagram-v2
 
 ## 테스트
 
-```bash
-npm test
-# 또는
-node --test
-```
-
 | 테스트 파일 | 검증 대상 | 주요 케이스 |
 |---|---|---|
 | `h.test.js` | VNode 생성 | 타입 분류, null 필터링, key 보존 |
@@ -407,12 +322,76 @@ node --test
 
 ---
 
+## 버그 수정 사례 — Null Child 처리
+
+예제를 실제로 실행하면서 발생한 버그를 원인 분석 → 수정 → 회귀 테스트까지 처리하였습니다.
+
+### 증상
+
+```
+Uncaught TypeError: Cannot read properties of null (reading 'nodeType')
+```
+
+상태 필터 팝오버가 닫힌 상태(오버레이 컴포넌트가 `null` 반환)에서 앱을 실행하면 첫 렌더부터 중단됐고,
+1초 타이머가 `setCurrentTime`을 계속 호출해 같은 에러가 콘솔에 누적됐습니다.
+
+### 원인 분석
+
+```mermaid
+flowchart TD
+    A["StatusFilterOverlay(props)"] -->|"isOpen = false"| B["return null"]
+    B --> C["createRealNode(null)"]
+    C --> D["null.nodeType 접근"]
+
+    E["setInterval → setCurrentTime()"] -->|"1초마다"| F["component.update()"]
+    F --> C
+```
+
+`createRealNode()`가 모든 자식이 VNode라고 가정했기 때문입니다.  
+조건부 렌더링으로 `null`을 반환하는 컴포넌트는 흔한 패턴인데, 엔진이 이를 처리하지 못하고 있었습니다.
+
+### 수정
+
+`createRealNode()`에 null 가드를 두 곳에 추가했습니다.
+
+```js
+// 수정 전: nodeType을 바로 읽다가 null이면 폭발
+// 수정 후: null이면 즉시 null을 반환
+
+const vnode = resolveVNode(inputVNode);
+if (!vnode) return null;           // ← 가드 1: 노드 자체가 null
+
+// 자식 append 시
+const childNode = createRealNode(child);
+if (childNode) {                   // ← 가드 2: 자식이 null이면 skip
+  domNode.appendChild(childNode);
+}
+```
+
+### 결과
+
+| | 수정 전 | 수정 후 |
+|---|---|---|
+| 팝오버 닫힌 상태에서 렌더 | 중단 | 정상 |
+| 타이머 반복 에러 | 매초 발생 | 없음 |
+| 조건부 null 반환 자식 | 사용 불가 | 사용 가능 |
+
+---
+
 ## 디렉토리 구조
 
 ```
 mini_react/
+├── examples/
+│   └── departure-board/        # 출발 안내판
+│       ├── index.html
+│       └── main.js
+│
 ├── src/                        # 핵심 라이브러리
-│   ├── index.js                # 공개 API 재내보내기
+│   ├── function-component.js   # FunctionComponent 클래스
+│   ├── hooks.js                # useState, useEffect, useMemo
+│   │
+│   ├── index.js                # 공개 API 내보내기
 │   ├── constants.js            # VNODE_TYPES, PATCH_TYPES 상수
 │   ├── h.js                    # VNode 팩토리 (createElement)
 │   ├── render.js               # 렌더 오케스트레이터
@@ -421,15 +400,8 @@ mini_react/
 │   ├── create-real-node.js     # VNode → DOM 노드 생성
 │   ├── dom-props.js            # 속성/이벤트 핸들러 관리
 │   ├── path.js                 # DOM 경로 유틸리티
-│   ├── function-component.js   # FunctionComponent 클래스
-│   ├── hooks.js                # useState, useEffect, useMemo
 │   ├── debug.js                # 디버그 이벤트 버스
 │   └── dom-to-vnode.js         # 실제 DOM → VNode 변환
-│
-├── examples/
-│   └── departure-board/        # 출발 안내판 — 메인 발표 예제
-│       ├── index.html
-│       └── main.js
 │
 ├── test/
 │   ├── h.test.js
