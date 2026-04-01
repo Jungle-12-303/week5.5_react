@@ -1,51 +1,46 @@
-# mini-react
+# mini-react — 출발 전광판
 
 React의 핵심 동작 원리를 바닥부터 직접 구현한 학습용 프로젝트입니다.  
-Virtual DOM, Diff/Patch, Hooks(useState · useEffect · useMemo), FunctionComponent를 Vanilla JS로 구현합니다.
+Virtual DOM, Diff/Patch, Hooks(useState · useEffect · useMemo), FunctionComponent를 Vanilla JS로 구현하고,  
+이를 활용해 **공항·기차역 출발 안내판** 웹 앱을 완성했습니다.
+
+```
+open examples/departure-board/index.html   # 로컬 서버 필요 (ES Module)
+npx serve .                                # 또는 VS Code Live Server
+```
 
 ---
 
 ## 목차
 
-1. [프로젝트 개요](#프로젝트-개요)
+1. [요구사항 구현 요약](#요구사항-구현-요약)
 2. [전체 아키텍처](#전체-아키텍처)
-3. [디렉토리 구조](#디렉토리-구조)
-4. [핵심 구현](#핵심-구현)
-   - [Virtual DOM](#virtual-dom)
-   - [Diff 알고리즘](#diff-알고리즘)
-   - [Commit (Patch 적용)](#commit-patch-적용)
+3. [핵심 구현](#핵심-구현)
    - [FunctionComponent](#functioncomponent)
    - [Hooks](#hooks)
-5. [예제 애플리케이션](#예제-애플리케이션)
-   - [Basic Counter](#basic-counter)
-   - [Hooks Demo](#hooks-demo)
-   - [Departure Board](#departure-board)
-   - [Virtual DOM Lab](#virtual-dom-lab)
-6. [테스트](#테스트)
-7. [실행 방법](#실행-방법)
+   - [Virtual DOM → Diff → Patch](#virtual-dom--diff--patch)
+4. [출발 전광판 예제](#출발-전광판-예제)
+   - [컴포넌트 구조 (Lifting State Up)](#컴포넌트-구조-lifting-state-up)
+   - [상태 및 훅 설계](#상태-및-훅-설계)
+   - [항공편 상태 전환](#항공편-상태-전환)
+5. [테스트](#테스트)
+6. [디렉토리 구조](#디렉토리-구조)
 
 ---
 
-## 프로젝트 개요
+## 요구사항 구현 요약
 
-| 항목 | 내용 |
-|---|---|
-| 언어 | Vanilla JavaScript (ES Modules) |
-| 외부 의존성 | 없음 |
-| 테스트 | Node.js 내장 `node:test` |
-| 빌드 | 불필요 |
-
-### 구현 목표 (requirements.md 기반)
-
-```
-✅ 함수형 컴포넌트 (FunctionComponent 클래스)
-✅ useState  — 상태 관리 및 자동 리렌더링
-✅ useEffect — 사이드 이펙트 및 클린업
-✅ useMemo   — 파생값 메모이제이션
-✅ Virtual DOM 생성 → Diff → Patch 파이프라인
-✅ 상태 끌어올리기 패턴 (Lifting State Up)
-✅ 단위 테스트 + 통합 테스트
-```
+| 요구사항 | 구현 위치 | 내용 |
+|---|---|---|
+| 함수형 컴포넌트 (FunctionComponent 클래스) | `src/function-component.js` | hooks 배열, mount(), update() 포함 |
+| useState | `src/hooks.js` | 슬롯 기반 상태 저장, setState → update() 트리거 |
+| useEffect | `src/hooks.js` | deps 비교, queueMicrotask 스케줄, cleanup |
+| useMemo | `src/hooks.js` | deps 변경 시만 재계산, 캐시 반환 |
+| Virtual DOM + Diff + Patch | `src/diff.js`, `src/commit.js` | 변경된 부분만 실제 DOM에 반영 |
+| 상태 끌어올리기 (Lifting State Up) | `examples/departure-board/main.js` | 루트만 상태 보유, 자식은 순수 함수 |
+| 사용자 입력/클릭으로 화면 변경 | `examples/departure-board/main.js` | 편성 추가·삭제·지연, 필터, 1초 타이머 |
+| Vanilla JS / 외부 프레임워크 금지 | 전체 | 외부 의존성 없음 |
+| 단위 테스트 + 엣지 케이스 | `test/` | 6개 파일, 40+ 케이스 |
 
 ---
 
@@ -60,7 +55,7 @@ flowchart TD
     D --> F[Patch Array]
     E --> F
     F --> G["commitPatches(rootNode, patches)"]
-    G -->|"CREATE / REMOVE<br>REPLACE / UPDATE_PROP<br>UPDATE_TEXT"| H[실제 DOM]
+    G -->|"CREATE / REMOVE / REPLACE<br>UPDATE_PROP / UPDATE_TEXT"| H[실제 DOM]
 
     subgraph hooks["Hooks Layer (FunctionComponent)"]
         I["mount() / update()"] -->|"currentComponent = this<br>hookIndex = 0"| J["fn(props) 호출"]
@@ -73,198 +68,12 @@ flowchart TD
 
 ---
 
-## 디렉토리 구조
-
-```
-mini_react/
-├── src/                        # 핵심 라이브러리
-│   ├── index.js                # 공개 API 재내보내기
-│   ├── constants.js            # VNODE_TYPES, PATCH_TYPES 상수
-│   ├── h.js                    # VNode 팩토리 (createElement)
-│   ├── render.js               # 렌더 오케스트레이터
-│   ├── diff.js                 # Virtual DOM 비교 알고리즘
-│   ├── commit.js               # Patch → 실제 DOM 반영
-│   ├── create-real-node.js     # VNode → DOM 노드 생성
-│   ├── dom-props.js            # 속성/이벤트 핸들러 관리
-│   ├── path.js                 # DOM 경로 유틸리티
-│   ├── function-component.js   # FunctionComponent 클래스
-│   ├── hooks.js                # useState, useEffect, useMemo
-│   ├── debug.js                # 디버그 이벤트 버스
-│   └── dom-to-vnode.js         # 실제 DOM → VNode 변환
-│
-├── examples/
-│   ├── basic-counter/          # render/diff/commit 기초 데모
-│   ├── hooks-demo/             # 훅 3종 동작 확인 데모
-│   ├── departure-board/        # 출발 안내판 (메인 예제)
-│   └── virtual-dom-lab/        # Virtual DOM 학습 인터랙티브 실습
-│
-├── test/
-│   ├── h.test.js
-│   ├── diff.test.js
-│   ├── render.test.js
-│   ├── function-component.test.js
-│   ├── hooks.test.js
-│   └── hooks-demo.test.js
-│
-├── package.json
-└── requirements.md
-```
-
----
-
 ## 핵심 구현
-
-### Virtual DOM
-
-Virtual DOM은 실제 DOM을 모방하는 **순수 JS 객체 트리**입니다.  
-`h()` 함수로 VNode를 생성하고, 세 가지 노드 타입을 구분합니다.
-
-```mermaid
-classDiagram
-    class VNode {
-        +nodeType: ELEMENT | TEXT | COMPONENT
-        +type: string | Function
-        +props: Object
-        +children: VNode[]
-    }
-
-    class ElementVNode {
-        nodeType = ELEMENT
-        type = "div" | "span" | ...
-    }
-
-    class TextVNode {
-        nodeType = TEXT
-        type = "TEXT_ELEMENT"
-        props.nodeValue = "텍스트"
-    }
-
-    class ComponentVNode {
-        nodeType = COMPONENT
-        type = Function
-    }
-
-    VNode <|-- ElementVNode
-    VNode <|-- TextVNode
-    VNode <|-- ComponentVNode
-```
-
-**VNode 생성 예시:**
-
-```js
-// <div class="board"><h1>출발 안내</h1></div>
-h('div', { className: 'board' },
-  h('h1', null, '출발 안내')
-)
-
-// 결과 VNode 트리
-{
-  nodeType: ELEMENT,
-  type: 'div',
-  props: { className: 'board' },
-  children: [
-    {
-      nodeType: ELEMENT,
-      type: 'h1',
-      props: {},
-      children: [
-        { nodeType: TEXT, type: 'TEXT_ELEMENT', props: { nodeValue: '출발 안내' }, children: [] }
-      ]
-    }
-  ]
-}
-```
-
----
-
-### Diff 알고리즘
-
-이전 VNode와 새 VNode를 비교해 **최소한의 변경 목록(Patch[])** 을 계산합니다.
-
-```mermaid
-flowchart TD
-    A["diff(oldVNode, newVNode)"] --> B{old가 null?}
-    B -->|Yes| C["PATCH: CREATE"]
-    B -->|No| D{new가 null?}
-    D -->|Yes| E["PATCH: REMOVE"]
-    D -->|No| F{노드 타입 같음?}
-    F -->|No| G["PATCH: REPLACE"]
-    F -->|Yes| H{TEXT 노드?}
-    H -->|Yes| I{nodeValue 변경?}
-    I -->|Yes| J["PATCH: UPDATE_TEXT"]
-    I -->|No| K[변경 없음]
-    H -->|No| L["diffProps → UPDATE_PROP*"]
-    L --> M{자식 존재?}
-    M -->|key 있음| N[Key 기반 diffing]
-    M -->|key 없음| O[Index 기반 diffing]
-    N --> P["Patch[] 반환"]
-    O --> P
-```
-
-**Patch 종류:**
-
-| Patch 타입 | 설명 |
-|---|---|
-| `CREATE` | 새 노드 추가 |
-| `REMOVE` | 기존 노드 제거 |
-| `REPLACE` | 노드 전체 교체 (타입 변경 시) |
-| `UPDATE_PROP` | 속성/이벤트 변경 |
-| `UPDATE_TEXT` | 텍스트 내용 변경 |
-
-**Key 기반 vs Index 기반 Diffing:**
-
-```mermaid
-flowchart LR
-    subgraph key["Key 기반 (key prop 존재 시)"]
-        K1["old: A→B→C"] --> K2["new: C→A→B"]
-        K2 --> K3["key로 매칭<br>순서 변경 감지 가능"]
-    end
-
-    subgraph index["Index 기반 (key 없을 때)"]
-        I1["old: A→B→C"] --> I2["new: A→X→C"]
-        I2 --> I3["위치[1] 비교<br>B→X REPLACE 생성"]
-    end
-```
-
----
-
-### Commit (Patch 적용)
-
-Patch 배열을 순서대로 실제 DOM에 반영합니다.  
-`path` 문자열(`"root.children[0].children[2]"`)로 대상 노드를 정확히 찾아 조작합니다.
-
-```mermaid
-sequenceDiagram
-    participant R as render.js
-    participant D as diff.js
-    participant C as commit.js
-    participant DOM as 실제 DOM
-
-    R->>D: diff(oldVNode, newVNode)
-    D-->>R: Patch[]
-    R->>C: commitPatches(rootNode, patches)
-    loop 각 Patch
-        C->>C: getNodeByPath(path)
-        alt CREATE
-            C->>DOM: appendChild(createRealNode)
-        else REMOVE
-            C->>DOM: removeChild(target)
-        else REPLACE
-            C->>DOM: replaceChild(new, old)
-        else UPDATE_PROP
-            C->>DOM: updateProps(node, oldProps, newProps)
-        else UPDATE_TEXT
-            C->>DOM: target.nodeValue = newValue
-        end
-    end
-```
-
----
 
 ### FunctionComponent
 
 상태를 가진 **루트 컴포넌트 래퍼 클래스**입니다.  
-요구사항에 따라 Hook은 최상위 컴포넌트에서만 사용하고, 자식은 순수 함수로 유지합니다.
+Hook은 최상위 컴포넌트에서만 사용하고, 자식은 순수 함수로 유지합니다.
 
 ```mermaid
 classDiagram
@@ -278,54 +87,36 @@ classDiagram
         +update()
     }
 
-    note for FunctionComponent "mount() / update() 실행 시:<br>  1. currentComponent = this<br>  2. hookIndex = 0으로 리셋<br>  3. fn(props) 호출 → VNode 획득<br>  4. render(vnode, container)<br>  5. currentComponent = null"
+    note for FunctionComponent "mount() / update() 실행 시:\n  1. currentComponent = this\n  2. hookIndex = 0으로 리셋\n  3. fn(props) 호출 → VNode 획득\n  4. render(vnode, container)\n  5. currentComponent = null"
 ```
-
-**컴포넌트 트리 설계 원칙 (Lifting State Up):**
-
-```mermaid
-graph TD
-    ROOT["Root FunctionComponent<br>(useState, useEffect, useMemo 사용 가능)"]
-    C1["Child Component A<br>(props만 수신, 순수 함수)"]
-    C2["Child Component B<br>(props만 수신, 순수 함수)"]
-    C3["Child Component C<br>(props만 수신, 순수 함수)"]
-
-    ROOT -->|"props 전달"| C1
-    ROOT -->|"props 전달"| C2
-    C2 -->|"props 전달"| C3
-
-    style ROOT fill:#4a6cf7,color:#fff
-    style C1 fill:#e8f0fe,stroke:#4a6cf7
-    style C2 fill:#e8f0fe,stroke:#4a6cf7
-    style C3 fill:#e8f0fe,stroke:#4a6cf7
-```
-
-> 상태는 루트에서만 관리되며, 자식 컴포넌트는 `props`만 받아 렌더링합니다.
 
 ---
 
 ### Hooks
 
 훅은 `FunctionComponent`의 `hooks` 배열에 **슬롯 단위**로 저장됩니다.  
-`hookIndex`가 렌더링마다 0부터 순서대로 증가하므로 **훅 호출 순서가 일정해야** 합니다.
+렌더링마다 `hookIndex`가 0부터 순서대로 증가하므로 **훅 호출 순서가 일정해야** 합니다.
 
 ```mermaid
 flowchart LR
     subgraph render["fn(props) 실행 중"]
-        H1["useState(0)<br>hooks[0]"]
-        H2["useMemo(fn, deps)<br>hooks[1]"]
-        H3["useEffect(cb, deps)<br>hooks[2]"]
+        H1["useState(departures)<br>hooks[0]"]
+        H2["useState(currentTime)<br>hooks[1]"]
+        H3["useEffect(timer, [])<br>hooks[5]"]
+        H4["useMemo(boardView, deps)<br>hooks[6]"]
     end
 
     subgraph slots["hooks 배열"]
         S0["[0] : value, setState"]
-        S1["[1] : value, deps"]
-        S2["[2] : deps, cleanup"]
+        S1["[1] : value, setState"]
+        S5["[5] : deps, cleanup"]
+        S6["[6] : value, deps"]
     end
 
     H1 --> S0
     H2 --> S1
-    H3 --> S2
+    H3 --> S5
+    H4 --> S6
 ```
 
 #### useState
@@ -379,61 +170,59 @@ flowchart TD
 
 ---
 
-## 예제 애플리케이션
+### Virtual DOM → Diff → Patch
 
-### Basic Counter
-
-가장 단순한 데모. `FunctionComponent`나 훅 없이 `h()` + `render()` 직접 사용.  
-버튼 클릭마다 diff 결과(패치 목록, oldVDOM, newVDOM)를 패널에 시각화합니다.
-
-```
-examples/basic-counter/index.html
-```
-
----
-
-### Hooks Demo
-
-`FunctionComponent`와 훅 3종의 독립적 동작을 검증하는 데모.
+이전 VNode와 새 VNode를 비교해 **최소한의 변경 목록(Patch[])** 을 계산하고,  
+`path` 문자열로 대상 노드를 정확히 찾아 실제 DOM에만 반영합니다.
 
 ```mermaid
-graph TD
-    DA["DashboardApp<br>(Root FunctionComponent)"]
-    DA -->|"count, step"| HC["HeadlineCard<br>(순수 컴포넌트)"]
-    DA -->|"tone"| TC["ThemeCard<br>(순수 컴포넌트)"]
-    DA -->|"effectLog"| EL["EffectLog<br>(순수 컴포넌트)"]
+sequenceDiagram
+    participant R as render.js
+    participant D as diff.js
+    participant C as commit.js
+    participant DOM as 실제 DOM
 
-    subgraph hooks2["DashboardApp 내 훅"]
-        US1["useState(count)"]
-        US2["useState(step)"]
-        US3["useState(tone)"]
-        UM["useMemo(parityLabel, nextCount, ...)<br>deps: count, step"]
-        UE["useEffect(title 업데이트)<br>deps: count, step"]
+    R->>D: diff(oldVNode, newVNode)
+    D-->>R: Patch[]
+    R->>C: commitPatches(rootNode, patches)
+    loop 각 Patch
+        C->>C: getNodeByPath(path)
+        alt CREATE
+            C->>DOM: appendChild(createRealNode)
+        else REMOVE
+            C->>DOM: removeChild(target)
+        else REPLACE
+            C->>DOM: replaceChild(new, old)
+        else UPDATE_PROP
+            C->>DOM: updateProps(node, oldProps, newProps)
+        else UPDATE_TEXT
+            C->>DOM: target.nodeValue = newValue
+        end
     end
-
-    style DA fill:#4a6cf7,color:#fff
-    style HC fill:#e8f0fe,stroke:#4a6cf7
-    style TC fill:#e8f0fe,stroke:#4a6cf7
-    style EL fill:#e8f0fe,stroke:#4a6cf7
 ```
 
-**핵심 포인트:** `tone`(테마) 변경 시 리렌더링은 일어나지만, `useMemo`와 `useEffect`의 deps에 `tone`이 없으므로 재계산/재실행되지 않습니다.
+**Patch 종류:**
 
-```
-examples/hooks-demo/index.html
-```
+| Patch 타입 | 설명 |
+|---|---|
+| `CREATE` | 새 노드 추가 |
+| `REMOVE` | 기존 노드 제거 |
+| `REPLACE` | 노드 전체 교체 (타입 변경 시) |
+| `UPDATE_PROP` | 속성/이벤트 변경 |
+| `UPDATE_TEXT` | 텍스트 내용 변경 |
 
 ---
 
-### Departure Board
+## 출발 전광판 예제
 
-메인 예제 애플리케이션. 공항/기차역 출발 안내판을 구현합니다.
+공항·기차역 출발 안내판을 구현한 메인 예제입니다.  
+사용자가 편성을 추가·삭제·지연 설정하면 전광판이 즉시 업데이트되고,  
+1초 타이머가 현재 시각을 갱신하면서 상태(SCHEDULED → BOARDING → DEPARTED)가 자동 전환됩니다.
 
-```
-examples/departure-board/index.html
-```
+### 컴포넌트 구조 (Lifting State Up)
 
-#### 컴포넌트 구조
+**모든 상태는 루트(`DepartureBoardApp`)에서만 관리합니다.**  
+자식 컴포넌트는 `props`만 받는 순수 함수로 구현해 요구사항의 제약조건을 그대로 따릅니다.
 
 ```mermaid
 %%{init: { 
@@ -444,7 +233,7 @@ flowchart TD
     %% 노드용 스타일 (파란색 포인트 외곽선)
     classDef leafBox fill:#ffffff,stroke:#00a8ff,stroke-width:3px,color:#1a1a1a,border-radius:2px,font-family:'Comic Sans MS', 'Chalkboard SE', sans-serif;
 
-    subgraph App [DepartureBoardApp]
+    subgraph App [DepartureBoardApp — 루트 FunctionComponent]
         direction LR
         
         subgraph CP [ControlPanel]
@@ -480,101 +269,77 @@ flowchart TD
         end
     end
 
-    %% 컨테이너(서브그래프)용 스타일 (스케치 느낌의 두꺼운 검은색 테두리)
-    style App fill:#fcfcfc,stroke:#1a1a1a,stroke-width:4px,color:#1a1a1a,font-weight:bold
+    style App fill:#fcfcfc,stroke:#4a6cf7,stroke-width:4px,color:#1a1a1a,font-weight:bold
     style CP fill:#ffffff,stroke:#1a1a1a,stroke-width:3px,color:#1a1a1a,stroke-dasharray: 5 5
     style BS fill:#ffffff,stroke:#1a1a1a,stroke-width:3px,color:#1a1a1a,stroke-dasharray: 5 5
     style RDL fill:#f9f9f9,stroke:#1a1a1a,stroke-width:2px,color:#1a1a1a
     style RDC fill:#ffffff,stroke:#1a1a1a,stroke-width:2px,color:#1a1a1a
     style BT fill:#f9f9f9,stroke:#1a1a1a,stroke-width:2px,color:#1a1a1a
-    %% DL 서브그래프 스타일 수정 예시
     style DL fill:#f9f9f9,stroke:#1a1a1a,stroke-width:2px,padding:2px
-
 ```
 
-#### 상태 및 훅 설계
+> 파란 테두리: 순수 함수 자식 컴포넌트 (state 없음, props만 수신)
+
+---
+
+### 상태 및 훅 설계
 
 ```mermaid
 flowchart LR
-    subgraph state["useState (루트)"]
-        S1["departures[]"]
-        S2["currentTime (ms)"]
-        S3["form 입력값"]
-        S4["statusFilter"]
+    subgraph state["useState × 6 (루트에서만)"]
+        S1["departures[]<br>편성 목록"]
+        S2["currentTime<br>현재 시각(ms)"]
+        S3["form<br>입력 폼 값"]
+        S4["statusFilter<br>전광판 필터"]
+        S5["isStatusFilterOpen<br>팝오버 열림 여부"]
+        S6["statusFilterMenuPosition<br>팝오버 좌표"]
     end
 
-    subgraph effect["useEffect"]
-        E1["deps: []<br>setInterval 1초마다<br>setCurrentTime(Date.now())<br>cleanup: clearInterval"]
+    subgraph effect["useEffect — deps: []"]
+        E1["마운트 시 1회 실행<br>setInterval 1초마다 setCurrentTime<br>cleanup: clearInterval"]
     end
 
-    subgraph memo["useMemo"]
-        M1["deps: departures, currentTime, statusFilter<br>→ rows 정렬 및 상태 계산<br>→ filteredRows<br>→ 상태별 카운트"]
+    subgraph memo["useMemo — deps: [departures, currentTime, statusFilter]"]
+        M1["createBoardView() 결과 캐싱<br>→ filteredRows (정렬·필터 적용)<br>→ 상태별 카운트 (전체·정시·탑승·지연·출발)"]
     end
 
     S1 --> memo
     S2 --> memo
     S4 --> memo
+    S2 -.->|"1초마다 갱신"| effect
 ```
 
-#### 항공편 상태 전환
+**핵심 포인트:**
+- `useEffect`는 `deps: []`이므로 마운트 시 딱 한 번 타이머를 등록하고, 언마운트 시 `clearInterval`로 정리합니다.
+- `useMemo`는 `departures`, `currentTime`, `statusFilter` 중 하나라도 바뀔 때만 전광판 계산을 다시 수행합니다. 팝오버 좌표(`statusFilterMenuPosition`) 변경처럼 board view와 무관한 상태 업데이트는 메모 재계산을 유발하지 않습니다.
+
+---
+
+### 항공편 상태 전환
 
 ```mermaid
 stateDiagram-v2
     [*] --> SCHEDULED : 항공편 등록
-    SCHEDULED --> BOARDING : 출발 10분 전
-    BOARDING --> DEPARTED : 출발 시각 도달
-    SCHEDULED --> DELAYED : 지연 설정
-    DELAYED --> BOARDING : 출발 10분 전 (지연 기준)
-    DELAYED --> SCHEDULED : 지연 해제
-    BOARDING --> SCHEDULED : 수동 복귀
+    SCHEDULED --> BOARDING : 출발 10분 전 (자동)
+    BOARDING --> DEPARTED : 출발 시각 도달 (자동, 1초 타이머)
+    SCHEDULED --> DELAYED : 지연 설정 (+5분 버튼)
+    DELAYED --> BOARDING : 출발 10분 전 — 지연 기준 (자동)
+    DELAYED --> SCHEDULED : 지연 해제 버튼
+    BOARDING --> SCHEDULED : 수동 복귀 버튼
     note right of DEPARTED : 최종 상태
 ```
 
----
-
-### Virtual DOM Lab
-
-Virtual DOM의 동작 원리를 **인터랙티브하게 학습**하는 시각화 도구입니다.
-
-```mermaid
-flowchart LR
-    subgraph lab["Virtual DOM Lab 파이프라인"]
-        A["실제 DOM 편집<br>노드 추가/삭제/수정"] -->|"domToVNode()"| B["Current VNode Tree"]
-        C["이전 VNode 스냅샷"] -->|"diff(old, new)"| D["Patch 목록"]
-        B --> D
-        D -->|"applyPatch()"| E["DOM 업데이트"]
-        E -->|"스냅샷 저장"| C
-    end
-```
-
-**주요 기능:**
-- DOM 노드 클릭 선택 → 자식 추가 / 태그 교체 / 삭제
-- Previous VNode ↔ Current VNode 트리 시각화
-- diff 결과 패치 목록 실시간 표시
-- MutationObserver 로그
-- Undo/Redo 상태 히스토리
-
-```
-examples/virtual-dom-lab/index.html
-```
+상태 계산은 `useMemo` 안의 `getDepartureStatus(departure, currentTime)` 함수가 담당합니다.  
+`currentTime`이 1초마다 갱신되면 `useMemo`가 재실행되어 전광판 전체가 최소 DOM 패치로 업데이트됩니다.
 
 ---
 
 ## 테스트
 
-```mermaid
-graph LR
-    subgraph unit["단위 테스트"]
-        T1["h.test.js<br>6개"]
-        T2["diff.test.js<br>11개"]
-        T3["render.test.js<br>7개"]
-        T4["function-component.test.js<br>5개"]
-        T5["hooks.test.js<br>11개"]
-    end
-
-    subgraph integration["통합 테스트"]
-        T6["hooks-demo.test.js<br>1개 (다중 시나리오)"]
-    end
+```bash
+npm test
+# 또는
+node --test
 ```
 
 | 테스트 파일 | 검증 대상 | 주요 케이스 |
@@ -584,56 +349,44 @@ graph LR
 | `render.test.js` | render 오케스트레이터 | 순차 렌더, null 렌더, 다중 패치 커밋 순서 |
 | `function-component.test.js` | FunctionComponent | mount/update, hookIndex 리셋, currentComponent 전환 |
 | `hooks.test.js` | useState/useEffect/useMemo | 초기값, 업데이트, deps 비교, cleanup, 슬롯 독립성 |
-| `hooks-demo.test.js` | 통합 시나리오 | 테마 전환시 memo/effect 미실행, step 변경시 재계산 |
-
-**테스트 실행:**
-
-```bash
-npm test
-# 또는
-node --test
-```
+| `hooks-demo.test.js` | 통합 시나리오 | 테마 전환 시 memo/effect 미실행, step 변경 시 재계산 |
 
 > 모든 테스트는 외부 의존성 없이 Node.js 내장 `node:test`와 `node:assert/strict`만 사용합니다.  
 > 브라우저 없이 실행 가능하도록 `global.document`를 직접 구성한 Fake DOM 환경을 사용합니다.
 
 ---
 
-## 실행 방법
+## 디렉토리 구조
 
-```bash
-# 의존성 설치 불필요 (외부 패키지 없음)
-
-# 테스트 실행
-npm test
-
-# 예제 실행 — 각 폴더의 index.html을 브라우저에서 열기
-open examples/departure-board/index.html
-open examples/hooks-demo/index.html
-open examples/basic-counter/index.html
-open examples/virtual-dom-lab/index.html
 ```
-
-> ES Module을 사용하므로 `file://` 프로토콜에서 CORS 오류가 발생할 수 있습니다.  
-> 로컬 서버(`npx serve .` 또는 VS Code Live Server)를 통해 열면 정상 동작합니다.
-
----
-
-## 전체 업데이트 흐름 요약
-
-```mermaid
-flowchart TD
-    U["사용자 이벤트<br>(클릭, 입력 등)"] --> SS["setState(newValue)"]
-    SS --> UP["FunctionComponent.update()"]
-    UP --> RF["fn(props) 재호출<br>hookIndex = 0으로 리셋"]
-    RF --> HK["hooks 슬롯 순서대로 접근<br>useState / useMemo / useEffect"]
-    HK --> NV["새 VNode 트리 반환"]
-    NV --> DI["diff(oldVNode, newVNode)"]
-    DI --> PA["Patch[]"]
-    PA --> CM["commitPatches(rootNode, patches)"]
-    CM --> DOM["실제 DOM 최소 업데이트"]
-    DOM --> SC["useEffect 스케줄 실행<br>(queueMicrotask)"]
-
-    style U fill:#fef3c7,stroke:#d97706
-    style DOM fill:#d1fae5,stroke:#059669
+mini_react/
+├── src/                        # 핵심 라이브러리
+│   ├── index.js                # 공개 API 재내보내기
+│   ├── constants.js            # VNODE_TYPES, PATCH_TYPES 상수
+│   ├── h.js                    # VNode 팩토리 (createElement)
+│   ├── render.js               # 렌더 오케스트레이터
+│   ├── diff.js                 # Virtual DOM 비교 알고리즘
+│   ├── commit.js               # Patch → 실제 DOM 반영
+│   ├── create-real-node.js     # VNode → DOM 노드 생성
+│   ├── dom-props.js            # 속성/이벤트 핸들러 관리
+│   ├── path.js                 # DOM 경로 유틸리티
+│   ├── function-component.js   # FunctionComponent 클래스
+│   ├── hooks.js                # useState, useEffect, useMemo
+│   ├── debug.js                # 디버그 이벤트 버스
+│   └── dom-to-vnode.js         # 실제 DOM → VNode 변환
+│
+├── examples/
+│   └── departure-board/        # 출발 안내판 — 메인 발표 예제
+│       ├── index.html
+│       └── main.js
+│
+├── test/
+│   ├── h.test.js
+│   ├── diff.test.js
+│   ├── render.test.js
+│   ├── function-component.test.js
+│   ├── hooks.test.js
+│   └── hooks-demo.test.js
+│
+└── package.json
 ```
