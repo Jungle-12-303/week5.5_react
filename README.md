@@ -5,9 +5,23 @@ Virtual DOM, Diff/Patch, Hooks(useState · useEffect · useMemo), FunctionCompon
 이를 활용해 **공항·기차역 출발 안내판** 웹 앱을 완성했습니다.
 
 ```
-open examples/departure-board/index.html   # 로컬 서버 필요 (ES Module)
-npx serve .                                # 또는 VS Code Live Server
+npx serve .                                # 로컬 서버 실행 후
+# examples/departure-board/index.html 접속 (ES Module이므로 서버 필요)
 ```
+
+---
+
+## 발표 시연 포인트
+
+| 순서 | 행동 | 확인할 것 |
+|---|---|---|
+| 1 | 편성 추가 (항공편/열차) | 전광판에 행이 즉시 추가되고 Hook Debug Panel의 `setState`, `Render` 카운터 증가 |
+| 2 | 상태 필터 토글 (정시 → 탑승 안내) | 전광판이 필터링되면서 `useMemo`는 재계산, `useEffect`는 **실행 안 됨** |
+| 3 | 지연 +5분 버튼 클릭 | 해당 행만 DELAYED 뱃지로 전환, DOM Patch는 해당 셀만 |
+| 4 | 1초 대기 | 타이머가 `currentTime`을 갱신 → `useMemo` 재계산 → 출발 10분 전 행이 BOARDING으로 자동 전환 |
+| 5 | 팝오버 좌표 변경 (필터 버튼 클릭 후 닫기) | `setState` 호출되지만 `useMemo`는 **캐시 유지** (board 관련 deps 불변) |
+
+> Hook Debug Panel(화면 하단)은 `render:start`, `setState`, `useEffect:run`, `useMemo:compute` 이벤트를 실시간으로 집계합니다.
 
 ---
 
@@ -23,6 +37,7 @@ npx serve .                                # 또는 VS Code Live Server
    - [컴포넌트 구조 (Lifting State Up)](#컴포넌트-구조-lifting-state-up)
    - [상태 및 훅 설계](#상태-및-훅-설계)
    - [항공편 상태 전환](#항공편-상태-전환)
+   - [Hook Debug Panel](#hook-debug-panel)
 5. [테스트](#테스트)
 6. [디렉토리 구조](#디렉토리-구조)
 
@@ -33,6 +48,8 @@ npx serve .                                # 또는 VS Code Live Server
 | 요구사항 | 구현 위치 | 내용 |
 |---|---|---|
 | 함수형 컴포넌트 (FunctionComponent 클래스) | `src/function-component.js` | hooks 배열, mount(), update() 포함 |
+| **제약: Hook은 최상위 컴포넌트에서만** | `src/hooks.js` `getHookContext()` | `currentComponent === null`이면 즉시 throw — 자식 함수에서 호출 시 런타임 오류 발생 |
+| **제약: 자식은 Stateless 순수 함수** | `examples/departure-board/main.js` | 루트 외 모든 컴포넌트가 `props`만 받는 일반 함수로 구현 (FunctionComponent 인스턴스 없음) |
 | useState | `src/hooks.js` | 슬롯 기반 상태 저장, setState → update() 트리거 |
 | useEffect | `src/hooks.js` | deps 비교, queueMicrotask 스케줄, cleanup |
 | useMemo | `src/hooks.js` | deps 변경 시만 재계산, 캐시 반환 |
@@ -102,21 +119,33 @@ flowchart LR
     subgraph render["fn(props) 실행 중"]
         H1["useState(departures)<br>hooks[0]"]
         H2["useState(currentTime)<br>hooks[1]"]
-        H3["useEffect(timer, [])<br>hooks[5]"]
-        H4["useMemo(boardView, deps)<br>hooks[6]"]
+        H3["useState(form)<br>hooks[2]"]
+        H4["useState(statusFilter)<br>hooks[3]"]
+        H5["useState(isOpen)<br>hooks[4]"]
+        H6["useState(menuPos)<br>hooks[5]"]
+        H7["useEffect(timer, [])<br>hooks[6]"]
+        H8["useMemo(boardView, deps)<br>hooks[7]"]
     end
 
     subgraph slots["hooks 배열"]
         S0["[0] : value, setState"]
         S1["[1] : value, setState"]
-        S5["[5] : deps, cleanup"]
-        S6["[6] : value, deps"]
+        S2["[2] : value, setState"]
+        S3["[3] : value, setState"]
+        S4["[4] : value, setState"]
+        S5["[5] : value, setState"]
+        S6["[6] : deps, cleanup"]
+        S7["[7] : value, deps"]
     end
 
     H1 --> S0
     H2 --> S1
-    H3 --> S5
-    H4 --> S6
+    H3 --> S2
+    H4 --> S3
+    H5 --> S4
+    H6 --> S5
+    H7 --> S6
+    H8 --> S7
 ```
 
 #### useState
@@ -334,6 +363,23 @@ stateDiagram-v2
 
 ---
 
+### Hook Debug Panel
+
+페이지 하단에 내장된 **실시간 훅 관찰 도구**입니다.  
+`src/debug.js`의 이벤트 버스를 통해 mini-react 코어가 emit하는 디버그 이벤트를 수신합니다.
+
+| 카운터 | 증가 조건 |
+|---|---|
+| Render Start | `mount()` 또는 `update()` 진입 시 |
+| Update Start | `update()` 진입 시 |
+| setState Call | `useState`의 setter가 호출될 때 |
+| Effect Run | `useEffect` 콜백이 실제 실행될 때 (마이크로태스크) |
+| Memo Recompute | `useMemo`가 deps 변경을 감지해 fn()을 재실행할 때 |
+
+> 발표 시 팝오버 좌표(`statusFilterMenuPosition`) 변경 때 **Memo Recompute가 증가하지 않는 것**을 직접 보여주면 `useMemo` 의존성 최적화를 체감할 수 있습니다.
+
+---
+
 ## 테스트
 
 ```bash
@@ -353,6 +399,11 @@ node --test
 
 > 모든 테스트는 외부 의존성 없이 Node.js 내장 `node:test`와 `node:assert/strict`만 사용합니다.  
 > 브라우저 없이 실행 가능하도록 `global.document`를 직접 구성한 Fake DOM 환경을 사용합니다.
+
+**엣지 케이스 예시:**
+- `diff`: null 자식 필터링, key 기반 리스트 재정렬, 중복 key 경고
+- `hooks`: `useEffect` deps `undefined` (매 렌더 실행), cleanup 호출 순서, 복수 컴포넌트 간 슬롯 독립성
+- `function-component`: 렌더 중 예외 발생 시 `currentComponent`가 `null`로 복구되는지
 
 ---
 
