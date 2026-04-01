@@ -87,7 +87,7 @@ classDiagram
         +update()
     }
 
-    note for FunctionComponent "mount() / update() 실행 시:\n  1. currentComponent = this\n  2. hookIndex = 0으로 리셋\n  3. fn(props) 호출 → VNode 획득\n  4. render(vnode, container)\n  5. currentComponent = null"
+    note for FunctionComponent "mount() / update() 실행 시:<br>  1. currentComponent = this<br>  2. hookIndex = 0으로 리셋<br>  3. fn(props) 호출 → VNode 획득<br>  4. render(vnode, container)<br>  5. currentComponent = null"
 ```
 
 ---
