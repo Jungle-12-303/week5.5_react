@@ -1,11 +1,5 @@
 # mini-react — 출발 전광판
 
-React의 핵심 동작 원리를 바닥부터 직접 구현한 학습용 프로젝트입니다.  
-Virtual DOM, Diff/Patch, Hooks(useState · useEffect · useMemo), FunctionComponent를 Vanilla JS로 구현하고,  
-이를 활용해 **공항·기차역 출발 안내판** 웹 앱을 완성했습니다.
-
----
-
 ## 목차
 
 1. [요구사항 구현 요약](#요구사항-구현-요약)
@@ -13,12 +7,10 @@ Virtual DOM, Diff/Patch, Hooks(useState · useEffect · useMemo), FunctionCompon
 3. [핵심 구현](#핵심-구현)
    - [FunctionComponent](#functioncomponent)
    - [Hooks](#hooks)
-   - [Virtual DOM → Diff → Patch](#virtual-dom--diff--patch)
 4. [출발 전광판 예제](#출발-전광판-예제)
    - [컴포넌트 구조 (Lifting State Up)](#컴포넌트-구조-lifting-state-up)
    - [상태 및 훅 설계](#상태-및-훅-설계)
    - [항공편 상태 전환](#항공편-상태-전환)
-   - [Hook Debug Panel](#hook-debug-panel)
 5. [테스트](#테스트)
 6. [버그 수정 사례 — Null Child 처리](#버그-수정-사례--null-child-처리)
 7. [디렉토리 구조](#디렉토리-구조)
@@ -74,44 +66,6 @@ classDiagram
 ---
 
 ### Hooks
-
-훅은 `FunctionComponent`의 `hooks` 배열에 **슬롯 단위**로 저장됩니다.  
-렌더링마다 `hookIndex`가 0부터 순서대로 증가하므로 **훅 호출 순서가 일정해야** 합니다.
-
-```mermaid
-flowchart LR
-    subgraph render["fn(props) 실행 중"]
-        H1["useState(departures)<br>hooks[0]"]
-        H2["useState(currentTime)<br>hooks[1]"]
-        H3["useState(form)<br>hooks[2]"]
-        H4["useState(statusFilter)<br>hooks[3]"]
-        H5["useState(isOpen)<br>hooks[4]"]
-        H6["useState(menuPos)<br>hooks[5]"]
-        H7["useEffect(timer, [])<br>hooks[6]"]
-        H8["useMemo(boardView, deps)<br>hooks[7]"]
-    end
-
-    subgraph slots["hooks 배열"]
-        S0["[0] : value, setState"]
-        S1["[1] : value, setState"]
-        S2["[2] : value, setState"]
-        S3["[3] : value, setState"]
-        S4["[4] : value, setState"]
-        S5["[5] : value, setState"]
-        S6["[6] : deps, cleanup"]
-        S7["[7] : value, deps"]
-    end
-
-    H1 --> S0
-    H2 --> S1
-    H3 --> S2
-    H4 --> S3
-    H5 --> S4
-    H6 --> S5
-    H7 --> S6
-    H8 --> S7
-```
-
 #### useState
 
 ```mermaid
@@ -173,7 +127,7 @@ flowchart TD
 
 **모든 상태는 루트(`DepartureBoardApp`)에서만 관리합니다.**  
 자식 컴포넌트는 `props`만 받는 순수 함수로 구현해 요구사항의 제약조건을 그대로 따릅니다.
-
+<!-- 
 ```mermaid
 %%{init: { 
   'themeVariables': { 'fontSize': '50px' },
@@ -228,7 +182,9 @@ flowchart TD
     style DL fill:#f9f9f9,stroke:#1a1a1a,stroke-width:2px,padding:2px
 ```
 
-> 파란 테두리: 순수 함수 자식 컴포넌트 (state 없음, props만 수신)
+> 파란 테두리: 순수 함수 자식 컴포넌트 (state 없음, props만 수신) -->
+
+![svg](./docs/reviews/component_hierarchy.svg)
 
 ---
 
@@ -259,7 +215,7 @@ flowchart LR
     S2 -.->|"1초마다 갱신"| effect
 ```
 
-**핵심 포인트:**
+**요약:**
 - `useEffect`는 `deps: []`이므로 마운트 시 딱 한 번 타이머를 등록하고, 언마운트 시 `clearInterval`로 정리합니다.
 - `useMemo`는 `departures`, `currentTime`, `statusFilter` 중 하나라도 바뀔 때만 전광판 계산을 다시 수행합니다. 팝오버 좌표(`statusFilterMenuPosition`) 변경처럼 board view와 무관한 상태 업데이트는 메모 재계산을 유발하지 않습니다.
 
@@ -284,36 +240,13 @@ stateDiagram-v2
 
 ---
 
-### Hook Debug Panel
-
-페이지 하단에 내장된 **실시간 훅 관찰 도구**입니다.  
-`src/debug.js`의 이벤트 버스를 통해 mini-react 코어가 emit하는 디버그 이벤트를 수신합니다.
-
-| 카운터 | 증가 조건 |
-|---|---|
-| Render Start | `mount()` 또는 `update()` 진입 시 |
-| Update Start | `update()` 진입 시 |
-| setState Call | `useState`의 setter가 호출될 때 |
-| Effect Run | `useEffect` 콜백이 실제 실행될 때 (마이크로태스크) |
-| Memo Recompute | `useMemo`가 deps 변경을 감지해 fn()을 재실행할 때 |
-
-> 발표 시 팝오버 좌표(`statusFilterMenuPosition`) 변경 때 **Memo Recompute가 증가하지 않는 것**을 직접 보여주면 `useMemo` 의존성 최적화를 체감할 수 있습니다.
-
----
-
 ## 테스트
 
 | 테스트 파일 | 검증 대상 | 주요 케이스 |
 |---|---|---|
-| `h.test.js` | VNode 생성 | 타입 분류, null 필터링, key 보존 |
-| `diff.test.js` | Diff 알고리즘 | 5가지 Patch 생성, key 기반 재정렬, 중복 key 경고 |
-| `render.test.js` | render 오케스트레이터 | 순차 렌더, null 렌더, 다중 패치 커밋 순서 |
 | `function-component.test.js` | FunctionComponent | mount/update, hookIndex 리셋, currentComponent 전환 |
 | `hooks.test.js` | useState/useEffect/useMemo | 초기값, 업데이트, deps 비교, cleanup, 슬롯 독립성 |
 | `hooks-demo.test.js` | 통합 시나리오 | 테마 전환 시 memo/effect 미실행, step 변경 시 재계산 |
-
-> 모든 테스트는 외부 의존성 없이 Node.js 내장 `node:test`와 `node:assert/strict`만 사용합니다.  
-> 브라우저 없이 실행 가능하도록 `global.document`를 직접 구성한 Fake DOM 환경을 사용합니다.
 
 **엣지 케이스 예시:**
 - `diff`: null 자식 필터링, key 기반 리스트 재정렬, 중복 key 경고
